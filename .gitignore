@@ -1,0 +1,6 @@
+# Claude Code local session settings — not part of the project
+.claude/
+
+# safety net in case anything ever lands at repo root
+.env
+node_modules/
