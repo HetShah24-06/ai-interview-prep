@@ -141,17 +141,36 @@ don't have a session yet) requires an `X-CSRF-Token` header matching the
   separately (see above) via `express-rate-limit`.
 - **Headers:** `helmet` sets standard security headers on every response.
 
-## Deployment notes
+## Deployment
 
-- Set `NODE_ENV=production` on the backend host so auth cookies switch to
-  `Secure` + `SameSite=None` (required for a cross-origin frontend/backend
-  split, e.g. Vercel + Render).
-- Set `CLIENT_URL` (backend) to the deployed frontend origin, and
-  `VITE_API_URL` (frontend) to the deployed backend origin.
-- Puppeteer needs a host with real Chromium support for the resume-PDF
-  feature — most serverless/free-tier PaaS don't ship it by default. A
-  Docker-based host, or swapping to `@sparticuz/chromium` for serverless,
-  are the two common fixes.
+**Frontend:** live at **https://interview-master-ebon.vercel.app** (Vercel).
+`Frontend/vercel.json` rewrites every path to `index.html` so deep links
+(`/profile`, `/interview/:id`) survive a hard refresh — React Router handles
+routing client-side after that.
+
+**Backend:** not yet deployed. `Backend/Dockerfile` installs a real Chromium
+via apt and points Puppeteer at it (`PUPPETEER_EXECUTABLE_PATH`), which is
+the part that silently breaks on most hosts' default Node buildpacks. To
+deploy on Render:
+
+1. [render.com](https://render.com) → New → Blueprint → connect this repo.
+   Render reads `render.yaml` at the repo root and provisions the service
+   as a Docker web service automatically.
+2. Set the secret env vars Render will prompt for (`MONGO_URI`,
+   `JWT_SECRET`, `GOOGLE_GENAI_API_KEY`, `CLIENT_URL` — the last one is the
+   Vercel URL above).
+3. In MongoDB Atlas → Network Access, allow `0.0.0.0/0` (or Render's
+   specific egress IPs) — Atlas blocks unknown IPs by default.
+4. Once the backend is live, set `VITE_API_URL` on the Vercel project to
+   the Render URL and redeploy (`vercel --prod` from `Frontend/`, or push
+   to trigger a rebuild if Git integration is connected).
+
+General notes:
+- `NODE_ENV=production` on the backend switches auth cookies to `Secure` +
+  `SameSite=None`, required for this cross-origin frontend/backend split.
+- A host without Docker support (plain Node buildpack) will need
+  `@sparticuz/chromium` instead of the Dockerfile approach for the
+  resume-PDF feature to work.
 
 ## License
 
