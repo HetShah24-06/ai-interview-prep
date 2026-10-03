@@ -1,3 +1,4 @@
+[![Watch a one-minute video tour of ai-interview-prep](https://gitdiagram.com/video-badge.svg)](https://gitdiagram.com/hetshah24-06/ai-interview-prep/video)
 # Interview Master
 
 An AI-powered interview prep tool. Paste a target job description, add a
