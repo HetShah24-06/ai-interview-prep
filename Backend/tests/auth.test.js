@@ -53,6 +53,12 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(201);
     expect(res.headers["set-cookie"][0]).toMatch(/^token=/);
     expect(res.headers["set-cookie"].some((c) => c.startsWith("csrfToken="))).toBe(true);
+    /* also handed back in the body: the frontend and backend are on
+       different domains in production, so JS on the frontend can never
+       read a cookie the backend set, even a non-httpOnly one — the body is
+       the only channel that actually reaches it */
+    expect(res.body.csrfToken).toEqual(expect.any(String));
+    expect(res.body.csrfToken.length).toBeGreaterThan(0);
     expect(res.body.user.email).toBe("abc@example.com");
   });
 
@@ -110,6 +116,8 @@ describe("POST /api/auth/login", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers["set-cookie"][0]).toMatch(/^token=/);
+    expect(res.body.csrfToken).toEqual(expect.any(String));
+    expect(res.body.csrfToken.length).toBeGreaterThan(0);
   });
 });
 
@@ -132,7 +140,9 @@ describe("GET /api/auth/get-me and logout", () => {
       email: "x@example.com",
       password: "correct-password",
     });
-    const cookie = loginRes.headers["set-cookie"][0];
+    /* a real browser sends every cookie for the domain, not just the
+       first Set-Cookie header, so the test needs to forward both */
+    const cookie = loginRes.headers["set-cookie"].map((c) => c.split(";")[0]).join("; ");
 
     userModel.findById.mockResolvedValue({
       _id: "1",
@@ -144,6 +154,8 @@ describe("GET /api/auth/get-me and logout", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.user.username).toBe("abc");
+    expect(res.body.csrfToken).toEqual(expect.any(String));
+    expect(res.body.csrfToken.length).toBeGreaterThan(0);
   });
 
   it("blacklists the token on logout so it can't be reused", async () => {

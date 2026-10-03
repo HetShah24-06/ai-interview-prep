@@ -5,20 +5,23 @@ const api = axios.create({
   withCredentials: true,
 });
 
-function readCookie(name) {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+/* double-submit CSRF guard. The backend also sets this as a cookie, but the
+   frontend can't rely on reading it via document.cookie: in production the
+   frontend (Vercel) and backend (Render) are on different domains, and a
+   cookie set by one origin is invisible to JS running on another origin,
+   even a non-httpOnly one. So instead the backend hands the current value
+   back in the JSON body of register/login/get-me, and the frontend holds
+   it here in memory and echoes it back as a header on every mutating
+   request. See Backend/src/controllers/auth.controller.js (issueSession). */
+let csrfToken = null;
+
+export function setCsrfToken(token) {
+  csrfToken = token || null;
 }
 
-/* double-submit CSRF guard: the backend reads this back from the header
-   and compares it to the (non-httpOnly) csrfToken cookie it issued on
-   login/register, see Backend/src/middlewares/csrf.middleware.js */
 api.interceptors.request.use((config) => {
-  if ((config.method || "get").toUpperCase() !== "GET") {
-    const csrfToken = readCookie("csrfToken");
-    if (csrfToken) {
-      config.headers["X-CSRF-Token"] = csrfToken;
-    }
+  if ((config.method || "get").toUpperCase() !== "GET" && csrfToken) {
+    config.headers["X-CSRF-Token"] = csrfToken;
   }
   return config;
 });

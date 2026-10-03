@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import { AuthContext } from "../auth.context";
 import { login, register, logout } from "../services/auth.api";
+import { setCsrfToken } from "../../../lib/api";
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -19,6 +20,7 @@ export const useAuth = () => {
     try {
       const data = await login({ email, password });
       setUser(data.user);
+      setCsrfToken(data.csrfToken);
       return data.user;
     } catch (err) {
       setError(err.message);
@@ -34,6 +36,7 @@ export const useAuth = () => {
     try {
       const data = await register({ username, email, password });
       setUser(data.user);
+      setCsrfToken(data.csrfToken);
       return data.user;
     } catch (err) {
       setError(err.message);
@@ -52,6 +55,7 @@ export const useAuth = () => {
       setError(err.message);
     } finally {
       setUser(null);
+      setCsrfToken(null);
       setLoading(false);
     }
   };

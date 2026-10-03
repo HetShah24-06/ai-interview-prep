@@ -27,6 +27,13 @@ function issueSession(res, user) {
 
   res.cookie("token", token, cookieOptions);
   res.cookie("csrfToken", csrfToken, csrfCookieOptions);
+
+  /* also handed back in the response body (not just the cookie) because the
+     frontend and backend live on different domains in production (Vercel /
+     Render) — document.cookie on the frontend's origin can never see a
+     cookie set by a different origin, even a non-httpOnly one, so the
+     frontend has to get its copy here instead and hold it in memory */
+  return csrfToken;
 }
 
 /**
@@ -63,7 +70,7 @@ async function registerUserController(req, res) {
     password: hash,
   });
 
-  issueSession(res, user);
+  const csrfToken = issueSession(res, user);
 
   res.status(201).json({
     message: "User registered successfully",
@@ -72,6 +79,7 @@ async function registerUserController(req, res) {
       username: user.username,
       email: user.email,
     },
+    csrfToken,
   });
 }
 
@@ -107,7 +115,7 @@ async function loginUserController(req, res) {
     });
   }
 
-  issueSession(res, user);
+  const csrfToken = issueSession(res, user);
 
   res.status(200).json({
     message: "User loggedIn successfully.",
@@ -116,6 +124,7 @@ async function loginUserController(req, res) {
       username: user.username,
       email: user.email,
     },
+    csrfToken,
   });
 }
 
@@ -160,6 +169,11 @@ async function getMeController(req, res) {
       username: user.username,
       email: user.email,
     },
+    /* the browser still sends this cookie to the backend on every request
+       regardless of the frontend's origin, so it's available here even
+       though the frontend can't read it itself; handing it back lets the
+       frontend re-sync its in-memory copy after a page reload */
+    csrfToken: req.cookies.csrfToken,
   });
 }
 
