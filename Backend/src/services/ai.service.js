@@ -118,9 +118,13 @@ async function generateInterviewReport({
 
 async function generatePdfFromHtml(htmlContent) {
   /* --no-sandbox is required on most containerized hosts (Render, Railway,
-     Docker) where the default sandbox has no permission to create user namespaces */
+     Docker) where the default sandbox has no permission to create user namespaces.
+     PUPPETEER_EXECUTABLE_PATH points at the apt-installed Chromium in the
+     Docker image (see Backend/Dockerfile); unset locally, where Puppeteer
+     uses the Chromium it downloaded on npm install. */
   const browser = await puppeteer.launch({
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
   });
   const page = await browser.newPage();
   await page.setContent(htmlContent, { waitUntil: "networkidle0" });

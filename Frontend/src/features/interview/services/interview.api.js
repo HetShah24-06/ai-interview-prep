@@ -1,9 +1,4 @@
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
-  withCredentials: true,
-});
+import api from "../../../lib/api";
 
 /* the backend always answers with { message }, surface that instead of axios noise.
    error bodies on a blob request come back as a Blob, so read it before giving up */
@@ -67,6 +62,19 @@ export const getInterviewReportById = async (interviewId) => {
 export const getAllInterviewReports = async () => {
   try {
     const response = await api.get("/api/interview/");
+
+    return response.data;
+  } catch (err) {
+    throw await toError(err);
+  }
+};
+
+/**
+ * @description Service to delete an interview report by id.
+ */
+export const deleteInterviewReport = async (interviewId) => {
+  try {
+    const response = await api.delete(`/api/interview/report/${interviewId}`);
 
     return response.data;
   } catch (err) {

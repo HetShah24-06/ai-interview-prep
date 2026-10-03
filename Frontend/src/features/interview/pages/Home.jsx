@@ -1,30 +1,85 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import "../style/home.scss"
 import { useInterview } from '../hooks/useInterview.js'
-import { useNavigate } from 'react-router'
+import { useNavigate, Link } from 'react-router'
+import { getProfile } from '../../profile/services/profile.api'
+
+const GENERATION_STEPS = [
+    "Analyzing the job description...",
+    "Comparing it with your background...",
+    "Identifying skill gaps...",
+    "Drafting technical & behavioral questions...",
+    "Building your preparation roadmap...",
+]
 
 const Home = () => {
 
-    const { loading, error, generateReport,reports } = useInterview()
+    const { loading, error, generateReport, reports, deleteReport } = useInterview()
     const [ jobDescription, setJobDescription ] = useState("")
     const [ selfDescription, setSelfDescription ] = useState("")
     const [ resumeName, setResumeName ] = useState("")
+    const [ savedResume, setSavedResume ] = useState(null)
+    const [ isGenerating, setIsGenerating ] = useState(false)
+    const [ stepIndex, setStepIndex ] = useState(0)
     const resumeInputRef = useRef()
 
     const navigate = useNavigate()
 
+    useEffect(() => {
+        getProfile()
+            .then((data) => setSavedResume(data.user.resume))
+            .catch(() => { })
+    }, [])
+
+    useEffect(() => {
+        if (!isGenerating) return
+
+        const interval = setInterval(() => {
+            setStepIndex((i) => Math.min(i + 1, GENERATION_STEPS.length - 1))
+        }, 2200)
+        return () => clearInterval(interval)
+    }, [ isGenerating ])
+
     const handleGenerateReport = async () => {
         const resumeFile = resumeInputRef.current.files[ 0 ]
+        setStepIndex(0)
+        setIsGenerating(true)
         const data = await generateReport({ jobDescription, selfDescription, resumeFile })
+        setIsGenerating(false)
         if (data) {
             navigate(`/interview/${data._id}`)
         }
     }
 
+    const handleDeleteReport = async (e, reportId) => {
+        e.stopPropagation()
+        if (window.confirm('Delete this interview plan? This cannot be undone.')) {
+            await deleteReport(reportId)
+        }
+    }
+
+    if (isGenerating) {
+        return (
+            <main className='loading-screen'>
+                <div className='generating-card'>
+                    <div className='generating-spinner' />
+                    <h1>Building your interview plan</h1>
+                    <p className='generating-step'>{GENERATION_STEPS[ stepIndex ]}</p>
+                    <div className='generating-progress'>
+                        <div
+                            className='generating-progress__bar'
+                            style={{ width: `${((stepIndex + 1) / GENERATION_STEPS.length) * 100}%` }}
+                        />
+                    </div>
+                </div>
+            </main>
+        )
+    }
+
     if (loading) {
         return (
             <main className='loading-screen'>
-                <h1>Loading your interview plan...</h1>
+                <h1>Loading your interview plans...</h1>
             </main>
         )
     }
@@ -91,6 +146,19 @@ const Home = () => {
                             </label>
                         </div>
 
+                        {savedResume && !resumeName && (
+                            <div className='info-box info-box--saved-resume'>
+                                <span className='info-box__icon'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" stroke="#1a1f27" strokeWidth="2" /><line x1="12" y1="16" x2="12.01" y2="16" stroke="#1a1f27" strokeWidth="2" /></svg>
+                                </span>
+                                <p>
+                                    Using your saved resume <strong>{savedResume.fileName}</strong>. Upload
+                                    a different one above to override it just for this plan, or{' '}
+                                    <Link to='/profile'>manage it in your profile</Link>.
+                                </p>
+                            </div>
+                        )}
+
                         {/* OR Divider */}
                         <div className='or-divider'><span>OR</span></div>
 
@@ -111,7 +179,11 @@ const Home = () => {
                             <span className='info-box__icon'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" stroke="#1a1f27" strokeWidth="2" /><line x1="12" y1="16" x2="12.01" y2="16" stroke="#1a1f27" strokeWidth="2" /></svg>
                             </span>
-                            <p>Either a <strong>Resume</strong> or a <strong>Self Description</strong> is required to generate a personalized plan.</p>
+                            <p>
+                                {savedResume
+                                    ? <>A <strong>Resume</strong>, a <strong>Self Description</strong>, or your saved profile resume is required to generate a personalized plan.</>
+                                    : <>Either a <strong>Resume</strong> or a <strong>Self Description</strong> is required to generate a personalized plan.</>}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -137,7 +209,17 @@ const Home = () => {
                     <ul className='reports-list'>
                         {reports.map(report => (
                             <li key={report._id} className='report-item' onClick={() => navigate(`/interview/${report._id}`)}>
-                                <h3>{report.title || 'Untitled Position'}</h3>
+                                <div className='report-item__header'>
+                                    <h3>{report.title || 'Untitled Position'}</h3>
+                                    <button
+                                        className='report-item__delete'
+                                        onClick={(e) => handleDeleteReport(e, report._id)}
+                                        aria-label='Delete this interview plan'
+                                        title='Delete'
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
                                 <p className='report-meta'>Generated on {new Date(report.createdAt).toLocaleDateString()}</p>
                                 <p className={`match-score ${report.matchScore >= 80 ? 'score--high' : report.matchScore >= 60 ? 'score--mid' : 'score--low'}`}>Match Score: {report.matchScore}%</p>
                             </li>

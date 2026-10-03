@@ -1,9 +1,13 @@
-const pdfParse = require("pdf-parse");
 const {
   generateInterviewReport,
   generateResumePdf,
 } = require("../services/ai.service");
 const interviewReportModel = require("../models/interviewReport.model");
+const userModel = require("../models/user.model");
+const { extractPdfText } = require("../utils/pdf.util");
+
+const JOB_DESCRIPTION_MAX_LENGTH = 5000;
+const SELF_DESCRIPTION_MAX_LENGTH = 2000;
 
 /**
  * @description Controller to generate interview report based on user self description, resume and job description.
@@ -17,21 +21,34 @@ async function generateInterViewReportController(req, res) {
     });
   }
 
-  /* the resume is optional, a self description on its own is enough */
-  if (!req.file && !selfDescription) {
+  if (jobDescription.length > JOB_DESCRIPTION_MAX_LENGTH) {
     return res.status(400).json({
-      message: "Please provide either a resume or a self description.",
+      message: `Job description must be under ${JOB_DESCRIPTION_MAX_LENGTH} characters.`,
+    });
+  }
+
+  if (selfDescription && selfDescription.length > SELF_DESCRIPTION_MAX_LENGTH) {
+    return res.status(400).json({
+      message: `Self description must be under ${SELF_DESCRIPTION_MAX_LENGTH} characters.`,
     });
   }
 
   let resumeText = "";
 
   if (req.file) {
-    const resumeContent = await new pdfParse.PDFParse(
-      Uint8Array.from(req.file.buffer),
-    ).getText();
+    resumeText = await extractPdfText(req.file.buffer);
+  } else if (!selfDescription) {
+    /* no file on this request and no self description, fall back to the
+       resume saved on the user's profile before giving up */
+    const user = await userModel.findById(req.user.id).select("+resumeText");
+    resumeText = user?.resumeText || "";
+  }
 
-    resumeText = resumeContent.text;
+  if (!resumeText && !selfDescription) {
+    return res.status(400).json({
+      message:
+        "Please provide either a resume or a self description, or save a resume to your profile.",
+    });
   }
 
   const interViewReportByAi = await generateInterviewReport({
@@ -95,6 +112,28 @@ async function getAllInterviewReportsController(req, res) {
 }
 
 /**
+ * @description Controller to delete an interview report belonging to the logged-in user.
+ */
+async function deleteInterviewReportController(req, res) {
+  const { interviewId } = req.params;
+
+  const interviewReport = await interviewReportModel.findOneAndDelete({
+    _id: interviewId,
+    user: req.user.id,
+  });
+
+  if (!interviewReport) {
+    return res.status(404).json({
+      message: "Interview report not found.",
+    });
+  }
+
+  res.status(200).json({
+    message: "Interview report deleted successfully.",
+  });
+}
+
+/**
  * @description Controller to generate resume PDF based on user self description, resume and job description.
  */
 async function generateResumePdfController(req, res) {
@@ -131,5 +170,6 @@ module.exports = {
   generateInterViewReportController,
   getInterviewReportByIdController,
   getAllInterviewReportsController,
+  deleteInterviewReportController,
   generateResumePdfController,
 };

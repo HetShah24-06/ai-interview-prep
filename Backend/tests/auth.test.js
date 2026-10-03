@@ -52,6 +52,7 @@ describe("POST /api/auth/register", () => {
 
     expect(res.status).toBe(201);
     expect(res.headers["set-cookie"][0]).toMatch(/^token=/);
+    expect(res.headers["set-cookie"].some((c) => c.startsWith("csrfToken="))).toBe(true);
     expect(res.body.user.email).toBe("abc@example.com");
   });
 

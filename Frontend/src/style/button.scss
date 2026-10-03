@@ -6,8 +6,13 @@
     cursor: pointer;
     transition: all 0.3s ease-in-out;
     &.primary-button{
-        background-color: #e80b5c;
+        background-color: var(--accent);
         color: white;
+    }
+    &.button--danger {
+        background-color: transparent;
+        border: 1px solid #e1034d;
+        color: #e1034d;
     }
     &:active {
         transform: scale(1.1);

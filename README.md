@@ -5,13 +5,14 @@ resume or a quick self-description, and get back a structured mock-interview
 pack: a match score, likely technical and behavioral questions (each with
 the interviewer's intention and a model answer), a skill-gap breakdown, a
 day-by-day preparation roadmap, and a tailored, ATS-friendly resume PDF for
-that specific job.
+that specific job. Save a base resume to your profile once and every future
+plan reuses it automatically.
 
 ## Screenshots
 
-| Login | Home | Interview Report |
-|---|---|---|
-| ![Login](docs/screenshots/login.png) | ![Home](docs/screenshots/home.png) | ![Report](docs/screenshots/report.png) |
+| Login | Home | Profile | Interview Report |
+|---|---|---|---|
+| ![Login](docs/screenshots/login.png) | ![Home](docs/screenshots/home.png) | ![Profile](docs/screenshots/profile.png) | ![Report](docs/screenshots/report.png) |
 
 ## Why this project
 
@@ -29,14 +30,20 @@ comes back. This one doesn't:
 - **A real multi-step pipeline:** PDF upload → text extraction (`pdf-parse`)
   → LLM analysis → structured storage → on-demand PDF regeneration
   (Gemini writes resume HTML, Puppeteer renders it).
+- **CSRF-protected, not just CORS-protected.** Mutating routes require a
+  double-submit CSRF token in addition to the auth cookie, and uploaded
+  PDFs are verified by file signature, not just the client-supplied
+  mimetype.
 
 ## Tech stack
 
 **Backend** — Node.js, Express 5, MongoDB/Mongoose, JWT (httpOnly cookies),
 bcrypt, Zod (both for request validation and for constraining LLM output),
-Multer, `pdf-parse`, Puppeteer, `@google/genai` (Gemini).
+Multer, `pdf-parse`, Puppeteer, `@google/genai` (Gemini), Helmet,
+express-rate-limit.
 
-**Frontend** — React 19, React Router 7, Axios, Sass.
+**Frontend** — React 19, React Router 7, Axios, Sass. Light/dark theme via
+CSS custom properties, persisted to `localStorage`.
 
 **Testing** — Jest + Supertest (backend).
 
@@ -69,8 +76,9 @@ Backend/
     controllers/   # request handling, one file per resource
     services/      # Gemini calls, Puppeteer PDF rendering
     models/        # Mongoose schemas
-    middlewares/    # auth, file upload, rate limiting
+    middlewares/    # auth, CSRF, file upload, rate limiting
     validators/     # Zod request-body schemas
+    utils/          # shared helpers (PDF text extraction)
     routes/
   tests/           # Jest + Supertest
 
@@ -79,6 +87,7 @@ Frontend/
     features/
       auth/         # login/register pages, auth context, navbar
       interview/    # home (report generation), report viewer
+      profile/      # saved-resume management
 ```
 
 ## API overview
@@ -89,13 +98,47 @@ Frontend/
 | `POST /api/auth/login` | Public | Log in, sets an auth cookie |
 | `GET /api/auth/logout` | Public | Blacklists the current token, clears the cookie |
 | `GET /api/auth/get-me` | Private | Current user, used to restore sessions on load |
-| `POST /api/interview/` | Private | Generate a report from a job description + resume/self-description |
+| `GET /api/users/profile` | Private | Current user + saved-resume metadata |
+| `PUT /api/users/resume` | Private | Save/replace the resume stored on the profile |
+| `GET /api/users/resume` | Private | Download the saved resume PDF |
+| `DELETE /api/users/resume` | Private | Remove the saved resume |
+| `PUT /api/users/email` | Private | Change email (requires current password) |
+| `PUT /api/users/password` | Private | Change password (requires current password) |
+| `POST /api/interview/` | Private | Generate a report from a job description + resume/self-description (falls back to the profile's saved resume if neither is given) |
 | `GET /api/interview/` | Private | List the logged-in user's reports |
 | `GET /api/interview/report/:id` | Private | Fetch one report |
+| `DELETE /api/interview/report/:id` | Private | Delete one report |
 | `POST /api/interview/resume/pdf/:id` | Private | Generate and download a tailored resume PDF for that report |
 
 `/api/auth/login` and `/api/auth/register` are rate-limited (20 requests /
-15 min per IP).
+15 min per IP). `POST /api/interview/` is rate-limited separately (15
+requests / hour per IP) since each call is a paid, ~10s Gemini request.
+Every mutating route above (PUT/POST/DELETE, except register/login which
+don't have a session yet) requires an `X-CSRF-Token` header matching the
+`csrfToken` cookie issued at login — see "Security" below.
+
+## Security
+
+- **Auth:** JWT in an httpOnly cookie (unreadable by JS, immune to XSS
+  token theft), 1-day expiry. Logout blacklists the token server-side
+  (Mongo TTL-indexed, auto-expires after 24h) instead of only clearing the
+  cookie, so a stolen cookie dies immediately on logout rather than
+  lingering until natural expiry.
+- **CSRF:** double-submit cookie pattern. Login/register also issue a
+  `csrfToken` cookie (readable by JS, unlike the auth cookie), which the
+  frontend echoes back as an `X-CSRF-Token` header on every mutating
+  request (`Frontend/src/lib/api.js`). The backend rejects a mismatch with
+  403 (`Backend/src/middlewares/csrf.middleware.js`). This matters because
+  `SameSite=None` is required in production for a cross-origin
+  frontend/backend split, which otherwise allows some cross-site requests
+  to carry the user's cookies automatically.
+- **File uploads:** validated by magic bytes (`%PDF-` signature), not just
+  the client-supplied `Content-Type`, which is trivially spoofable.
+- **Passwords:** bcrypt-hashed; changing the email or password requires
+  re-entering the current password.
+- **Rate limiting:** auth routes and report generation are capped
+  separately (see above) via `express-rate-limit`.
+- **Headers:** `helmet` sets standard security headers on every response.
 
 ## Deployment notes
 

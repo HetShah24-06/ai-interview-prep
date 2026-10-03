@@ -2,6 +2,7 @@ import {
   getAllInterviewReports,
   generateInterviewReport,
   getInterviewReportById,
+  deleteInterviewReport,
   generateResumePdf,
 } from "../services/interview.api";
 import { useContext, useEffect } from "react";
@@ -82,6 +83,17 @@ export const useInterview = () => {
     }
   };
 
+  const deleteReport = async (interviewId) => {
+    try {
+      await deleteInterviewReport(interviewId);
+      setReports((prev) => prev.filter((r) => r._id !== interviewId));
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    }
+  };
+
   const getResumePdf = async (interviewReportId) => {
     setLoading(true);
     setError(null);
@@ -123,6 +135,7 @@ export const useInterview = () => {
     generateReport,
     getReportById,
     getReports,
+    deleteReport,
     getResumePdf,
   };
 };

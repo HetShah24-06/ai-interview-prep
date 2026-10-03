@@ -1,11 +1,13 @@
 // ── Shared Variables (mirrors home.scss theme) ────────────────────────────────
-$bg-page: #0d1117;
-$bg-card: #161b22;
-$bg-panel: #1c2230;
-$bg-input: #1e2535;
-$border-color: #2a3348;
-$text-primary: #e6edf3;
-$text-muted: #7d8590;
+// Neutrals from style/theme.scss CSS custom properties, see home.scss for why
+// accent/severity stay real Sass colors instead of var().
+$bg-page: var(--bg-page);
+$bg-card: var(--bg-card);
+$bg-panel: var(--bg-panel);
+$bg-input: var(--bg-input);
+$border-color: var(--border-color);
+$text-primary: var(--text-primary);
+$text-muted: var(--text-muted);
 $accent: #ff2d78;
 $font-stack: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
@@ -108,6 +110,14 @@ $severity-low: #3fb950;
         align-items: center;
         flex-shrink: 0;
     }
+
+    &__home {
+        text-decoration: none;
+        margin-bottom: 0.75rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid $border-color;
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
 }
 
 // ── Center Content ────────────────────────────────────────────────────────────
@@ -172,7 +182,7 @@ $severity-low: #3fb950;
     transition: border-color 0.2s;
 
     &:hover {
-        border-color: lighten($border-color, 8%);
+        border-color: $text-muted;
     }
 
     &__header {
@@ -234,7 +244,7 @@ $severity-low: #3fb950;
         p {
             margin: 0;
             font-size: 0.835rem;
-            color: lighten($text-muted, 15%);
+            color: $text-primary;
             line-height: 1.6;
         }
     }
@@ -338,7 +348,7 @@ $severity-low: #3fb950;
             align-items: flex-start;
             gap: 0.5rem;
             font-size: 0.845rem;
-            color: lighten($text-muted, 12%);
+            color: $text-primary;
             line-height: 1.5;
         }
     }

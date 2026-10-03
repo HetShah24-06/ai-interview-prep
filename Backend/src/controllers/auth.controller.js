@@ -1,6 +1,7 @@
 const userModel = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const tokenBlacklistModel = require("../models/blacklist.model");
 const { registerSchema, loginSchema } = require("../validators/auth.validator");
 
@@ -13,6 +14,20 @@ const cookieOptions = {
   sameSite: isProduction ? "none" : "lax",
   maxAge: 24 * 60 * 60 * 1000,
 };
+
+/* readable by frontend JS (not httpOnly) so it can be echoed back in the
+   X-CSRF-Token header, see middlewares/csrf.middleware.js */
+const csrfCookieOptions = { ...cookieOptions, httpOnly: false };
+
+function issueSession(res, user) {
+  const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
+  const csrfToken = crypto.randomBytes(32).toString("hex");
+
+  res.cookie("token", token, cookieOptions);
+  res.cookie("csrfToken", csrfToken, csrfCookieOptions);
+}
 
 /**
  * @name registerUserController
@@ -48,13 +63,7 @@ async function registerUserController(req, res) {
     password: hash,
   });
 
-  const token = jwt.sign(
-    { id: user._id, username: user.username },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" },
-  );
-
-  res.cookie("token", token, cookieOptions);
+  issueSession(res, user);
 
   res.status(201).json({
     message: "User registered successfully",
@@ -98,13 +107,8 @@ async function loginUserController(req, res) {
     });
   }
 
-  const token = jwt.sign(
-    { id: user._id, username: user.username },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" },
-  );
+  issueSession(res, user);
 
-  res.cookie("token", token, cookieOptions);
   res.status(200).json({
     message: "User loggedIn successfully.",
     user: {
@@ -128,6 +132,7 @@ async function logoutUserController(req, res) {
   }
 
   res.clearCookie("token", cookieOptions);
+  res.clearCookie("csrfToken", csrfCookieOptions);
 
   res.status(200).json({
     message: "User logged out successfully",

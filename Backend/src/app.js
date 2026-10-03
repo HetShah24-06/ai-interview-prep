@@ -2,9 +2,11 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const multer = require("multer");
+const helmet = require("helmet");
 
 const app = express();
 
+app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -17,10 +19,17 @@ app.use(
 /* require all the routes here */
 const authRouter = require("./routes/auth.routes");
 const interviewRouter = require("./routes/interview.routes");
+const userRouter = require("./routes/user.routes");
 
 /* using all the routes here */
 app.use("/api/auth", authRouter);
 app.use("/api/interview", interviewRouter);
+app.use("/api/users", userRouter);
+
+/* unauthenticated, always-200 route for host health checks (Render, Railway, etc.) */
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });

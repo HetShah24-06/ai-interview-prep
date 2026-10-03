@@ -2,6 +2,8 @@ const express = require("express");
 const authMiddleware = require("../middlewares/auth.middleware");
 const interviewController = require("../controllers/interview.controller");
 const upload = require("../middlewares/file.middleware");
+const { interviewLimiter } = require("../middlewares/rateLimit.middleware");
+const { csrfProtection } = require("../middlewares/csrf.middleware");
 
 const interviewRouter = express.Router();
 
@@ -13,6 +15,8 @@ const interviewRouter = express.Router();
 interviewRouter.post(
   "/",
   authMiddleware.authUser,
+  csrfProtection,
+  interviewLimiter,
   upload.single("resume"),
   interviewController.generateInterViewReportController,
 );
@@ -40,6 +44,18 @@ interviewRouter.get(
 );
 
 /**
+ * @route DELETE /api/interview/report/:interviewId
+ * @description delete an interview report belonging to the logged in user.
+ * @access private
+ */
+interviewRouter.delete(
+  "/report/:interviewId",
+  authMiddleware.authUser,
+  csrfProtection,
+  interviewController.deleteInterviewReportController,
+);
+
+/**
  * @route GET /api/interview/resume/pdf
  * @description generate resume pdf on the basis of user self description, resume content and job description.
  * @access private
@@ -47,6 +63,7 @@ interviewRouter.get(
 interviewRouter.post(
   "/resume/pdf/:interviewReportId",
   authMiddleware.authUser,
+  csrfProtection,
   interviewController.generateResumePdfController,
 );
 
