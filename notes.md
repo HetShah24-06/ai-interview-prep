@@ -298,3 +298,30 @@ Mongo password / Gemini key (recommended multiple times since the raw
 values were printed into chat sessions) rather than reusing the original
 ones when filling in Render's env vars — worth checking next time this
 comes up rather than assuming either way.
+
+**2026-10-03 (bug fix)** — User hit "Invalid or missing CSRF token" trying
+to save a resume on the real production site. Root cause: the CSRF
+double-submit implementation read the `csrfToken` cookie client-side via
+`document.cookie`, which only works when frontend and backend share a
+hostname. In production they don't — frontend is on `vercel.app`, backend
+on `onrender.com` — and cookies are scoped by hostname, so a cookie set by
+one origin is **invisible** to JS running on another, non-httpOnly or not.
+All of this session's earlier CSRF testing happened against
+`localhost:3000` + `localhost:5173`, which share the hostname `localhost`
+(cookies ignore port), so the bug never surfaced until the real
+cross-domain deploy — a reminder that local "it works" isn't proof for
+anything cookie/origin-related once frontend and backend are split across
+real domains.
+
+Fix: backend now also returns `csrfToken` in the JSON body of
+register/login/get-me (`issueSession()` in `auth.controller.js` returns
+the value; get-me reads it server-side from `req.cookies.csrfToken`,
+which the browser does still send to the backend automatically — the
+restriction is only on frontend JS reading cross-origin cookies, not on
+the browser attaching them to requests). Frontend holds the value in
+memory (`Frontend/src/lib/api.js`, a module-level variable + exported
+setter) instead of trying to read a cookie it can never see, populated
+from the login/register/get-me response body. Verified against the real
+production URLs: resume upload (the exact failing action) now 200s, and a
+page reload followed by another mutating request (delete resume) also
+succeeds, confirming the get-me re-sync path works too.
