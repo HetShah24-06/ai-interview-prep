@@ -143,31 +143,30 @@ don't have a session yet) requires an `X-CSRF-Token` header matching the
 
 ## Deployment
 
-**Frontend:** live at **https://interview-master-ebon.vercel.app** (Vercel).
-`Frontend/vercel.json` rewrites every path to `index.html` so deep links
-(`/profile`, `/interview/:id`) survive a hard refresh — React Router handles
-routing client-side after that.
+**Live demo: [interview-master-ebon.vercel.app](https://interview-master-ebon.vercel.app)**
 
-**Backend:** not yet deployed. `Backend/Dockerfile` installs a real Chromium
-via apt and points Puppeteer at it (`PUPPETEER_EXECUTABLE_PATH`), which is
-the part that silently breaks on most hosts' default Node buildpacks. To
-deploy on Render:
+- **Frontend** — Vercel. `Frontend/vercel.json` rewrites every path to
+  `index.html` so deep links (`/profile`, `/interview/:id`) survive a hard
+  refresh — React Router handles routing client-side after that.
+- **Backend** — Render (Docker), at
+  `https://interview-master-backend-wf4c.onrender.com`. `Backend/Dockerfile`
+  installs a real Chromium via apt and points Puppeteer at it
+  (`PUPPETEER_EXECUTABLE_PATH`), which is the part that silently breaks on
+  most hosts' default Node buildpacks. Render reads `render.yaml` at the
+  repo root to provision it automatically from a Blueprint.
+- **Database** — MongoDB Atlas, Network Access open to `0.0.0.0/0` (Render's
+  free tier has no static egress IP, so this is the only practical option
+  on that plan — Atlas auth still protects the data itself).
 
-1. [render.com](https://render.com) → New → Blueprint → connect this repo.
-   Render reads `render.yaml` at the repo root and provisions the service
-   as a Docker web service automatically.
-2. Set the secret env vars Render will prompt for (`MONGO_URI`,
-   `JWT_SECRET`, `GOOGLE_GENAI_API_KEY`, `CLIENT_URL` — the last one is the
-   Vercel URL above).
-3. In MongoDB Atlas → Network Access, allow `0.0.0.0/0` (or Render's
-   specific egress IPs) — Atlas blocks unknown IPs by default.
-4. Once the backend is live, set `VITE_API_URL` on the Vercel project to
-   the Render URL and redeploy (`vercel --prod` from `Frontend/`, or push
-   to trigger a rebuild if Git integration is connected).
+Note: Render's free tier spins down after 15 minutes idle and takes
+~30-50s to wake on the next request — if the demo feels slow on first
+load, that's a cold start, not a bug.
 
-General notes:
+General notes for redeploying elsewhere:
 - `NODE_ENV=production` on the backend switches auth cookies to `Secure` +
   `SameSite=None`, required for this cross-origin frontend/backend split.
+- `CLIENT_URL` (backend) and `VITE_API_URL` (frontend, baked in at build
+  time) must point at each other's live URLs.
 - A host without Docker support (plain Node buildpack) will need
   `@sparticuz/chromium` instead of the Dockerfile approach for the
   resume-PDF feature to work.

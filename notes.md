@@ -266,5 +266,35 @@ security items, then the UX items, from the list above.
 
 All implemented, tested live (curl + a real headless-browser pass through
 register → theme toggle → generate → light-mode report → profile forms),
-and all test data cleaned from the Atlas cluster afterward. Deployment is
-next.
+and all test data cleaned from the Atlas cluster afterward.
+
+**2026-10-03** — Deployed the full stack. Frontend on Vercel (CLI was
+already authenticated on this machine under the user's account), backend
+on Render via the Dockerfile/render.yaml prepared the day before. One real
+hiccup along the way: Atlas rejected Render's connection
+(`MongooseServerSelectionError` / `ReplicaSetNoPrimary`) until Network
+Access was opened to `0.0.0.0/0` — Render's free tier has no static
+egress IP, so an IP allowlist doesn't work there, this is expected and the
+right call for this plan (not a workaround, the actual correct config).
+After that, `Connected to MongoDB` / `Server is running on port 10000`
+(Render assigns its own `PORT`, picked up correctly via
+`process.env.PORT`). Wired `VITE_API_URL` into Vercel's production env
+and redeployed. Verified the real production stack end-to-end in a
+headless browser against the live URLs: CORS preflight correct
+(`access-control-allow-origin` matches the Vercel origin,
+`allow-credentials: true`), register → 201, and both
+`/api/interview/` and `/api/users/profile` returned 200 — which only
+works if the cross-site `SameSite=None; Secure` cookies are actually
+round-tripping between the two different domains, so this is real proof
+the production auth flow works, not just that the pages loaded. Test
+account deleted from Atlas afterward.
+
+**Live demo:** https://interview-master-ebon.vercel.app
+**API:** https://interview-master-backend-wf4c.onrender.com
+
+The project is now fully built, tested, documented, and deployed. The one
+item never explicitly confirmed: whether the user actually rotated the
+Mongo password / Gemini key (recommended multiple times since the raw
+values were printed into chat sessions) rather than reusing the original
+ones when filling in Render's env vars — worth checking next time this
+comes up rather than assuming either way.
