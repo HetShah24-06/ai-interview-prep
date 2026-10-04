@@ -1,6 +1,8 @@
 main{
     min-height: 100vh;
     width: 100%;
+    box-sizing: border-box;
+    padding: 1.5rem;
 
     display: flex;
     justify-content: center;
@@ -8,7 +10,8 @@ main{
 
 
     .form-container{
-        min-width: 350px;
+        width: 100%;
+        max-width: 350px;
 
         display: flex;
         flex-direction: column;

@@ -31,6 +31,11 @@ $severity-low: #3fb950;
     align-items: stretch;
     padding: 1.5rem;
     box-sizing: border-box;
+
+    @media (max-width: 900px) {
+        padding: 0.75rem;
+        align-items: flex-start;
+    }
 }
 
 // ── 3-Column Layout ───────────────────────────────────────────────────────────
@@ -43,12 +48,21 @@ $severity-low: #3fb950;
     border: 1px solid $border-color;
     border-radius: 1rem;
     justify-content: space-between;
+
+    @media (max-width: 900px) {
+        flex-direction: column;
+    }
 }
 
 .interview-divider {
     width: 1px;
     background-color: $border-color;
     flex-shrink: 0;
+
+    @media (max-width: 900px) {
+        width: 100%;
+        height: 1px;
+    }
 }
 
 // ── Left Nav ─────────────────────────────────────────────────────────────────
@@ -61,7 +75,25 @@ $severity-low: #3fb950;
     justify-content: space-between;
     gap: 0.25rem;
 
+    @media (max-width: 900px) {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        gap: 0.5rem;
+    }
 
+    .nav-content {
+        @media (max-width: 900px) {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.4rem;
+        }
+    }
 
 
     &__label {
@@ -72,6 +104,10 @@ $severity-low: #3fb950;
         color: $text-muted;
         padding: 0 0.75rem;
         margin-bottom: 0.5rem;
+
+        @media (max-width: 900px) {
+            display: none;
+        }
     }
 
     &__item {
@@ -89,6 +125,10 @@ $severity-low: #3fb950;
         cursor: pointer;
         text-align: left;
         transition: background-color 0.15s, color 0.15s;
+
+        @media (max-width: 900px) {
+            width: auto;
+        }
 
         &:hover {
             background-color: $bg-panel;
@@ -117,6 +157,12 @@ $severity-low: #3fb950;
         padding-bottom: 1rem;
         border-bottom: 1px solid $border-color;
         border-radius: 0.5rem 0.5rem 0 0;
+
+        @media (max-width: 900px) {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
     }
 }
 
@@ -129,6 +175,14 @@ $severity-low: #3fb950;
     max-height: calc(100vh - 3rem);
     padding-bottom: 5rem;
     align-items: flex-start;
+
+    @media (max-width: 900px) {
+        max-height: none;
+        overflow-y: visible;
+        padding: 1.25rem 1rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
 
 
@@ -371,6 +425,12 @@ $severity-low: #3fb950;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+
+    @media (max-width: 900px) {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 1.25rem 1rem;
+    }
 }
 
 .sidebar-divider {
